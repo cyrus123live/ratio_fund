@@ -32,28 +32,5 @@ def main():
     print(roa_df)
     print(pe_df)
 
-    quit()
-
-    for i in range(len(income_statements)):
-
-        date = income_statements[i]["fiscalDateEnding"]
-        net_income = float(income_statements[i]["netIncome"])
-        total_assets = float(balance_statements[i]["totalAssets"])
-        shares_outstanding = float(balance_statements[i]["commonStockSharesOutstanding"])
-        current_price = get_price(date, daily_stock_prices)
-
-        # ROA = Net income / Total assets
-        roa = net_income / total_assets
-
-        # EPS = Net income / Shares Outstanding
-        # P/E Ratio = Current price / EPS
-        eps = net_income / shares_outstanding
-        p_e = current_price / eps
-
-        print(f"---{date}---")
-        print(roa)
-        print(p_e)
-        print("\n")
-
 if __name__ == "__main__":
     main()
