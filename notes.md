@@ -1,3 +1,5 @@
+Alphavantage: OBXVZ1S0Q6LU4IGH
+
 Automatically investing in businesses with Greenblatt's magic formula:
 - High earnings yield
 - High return on tangible capital
@@ -10,6 +12,7 @@ Automatically investing in businesses with Greenblatt's magic formula:
 ### Summary of instructions below:
 Finding stocks:
 - Get list of stocks: no utilities, financial stocks (mutual funds, banks, and insurance companies), no foreign companies ("name contains ADR")
+    - NOTE: why no foreign companies?
 - Calculate ROA, and find stocks with >25%
 - Calculate Price/Earnings ratios, lower is better
 - Eliminate:
