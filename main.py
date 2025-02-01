@@ -26,7 +26,10 @@ holdings = [] # list of dicts: name, date purchased, amount of stock, shorting T
 results = pd.DataFrame(columns=["portfolio value"])
 
 roic_ey_df = pd.read_csv("roic_ey.csv", index_col="fiscalDateEnding")
-prices_df = pd.read_csv("price.csv", index_col="fiscalDateEnding")
+prices_df = pd.read_csv("price_new.csv", index_col="fiscalDateEnding")
+
+# print(prices_df["CTBB_price"])
+print(roic_ey_df["CTBB_ey"])
 
 for quarter in range(roic_ey_df.index.get_loc(p["starting_quarter"]), -1, -1):
 
@@ -54,13 +57,17 @@ for quarter in range(roic_ey_df.index.get_loc(p["starting_quarter"]), -1, -1):
     for h in holdings:
         if dt.datetime.strptime(quarter_string, "%Y-%m-%d") - dt.datetime.strptime(h["date"], "%Y-%m-%d") > dt.timedelta(days=360):
             quarterly_capital += h["amount"] * prices_df.loc[quarter_string][f"{h['ticker']}_price"]
+            # quarterly_capital += h["amount"] * Tools.get_price_request(quarter_string, h['ticker'])
             holdings.remove(h)
+
+    print(picks)
 
     for stock in [p.replace("_ey", "") for p in picks.index]:
         holdings.append({
             "ticker": stock,
             "date": quarter_string,
             "amount": (quarterly_capital / p["stock_purchases_per_quarter"]) / prices_df.loc[quarter_string][f"{stock}_price"]
+            # "amount": (quarterly_capital / p["stock_purchases_per_quarter"]) / Tools.get_price_request(quarter_string, stock)
         })
 
     # print([[h["ticker"], h["amount"] * prices_df.loc[quarter_string][f"{h['ticker']}_price"] / 10000000.0, prices_df.loc[quarter_string][f"{h['ticker']}_price"]] for h in holdings], end="\n\n")
