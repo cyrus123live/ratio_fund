@@ -41,7 +41,6 @@ for lower, upper in price_ranges:
 
     for s in stocks:
         if s["sector"] in ["Consumer Cyclical", "Technology", "Industrials", "Basic Materials", "Communication Services", "Consumer Defensive", "Healthcare", "Real Estate", "Industrial Goods", "Services", "Conglomerates"] \
-            and s["isActivelyTrading"] \
             and (s["country"] == "US" or s["country"] == "CA") \
             and "ADR" not in s["companyName"]:
             stocks_parsed.append(s)

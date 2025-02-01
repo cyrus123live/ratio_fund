@@ -1,59 +1,87 @@
-from datetime import datetime, timedelta
 import pandas as pd
+import datetime as dt
+import matplotlib.pyplot as plt
+import requests
+import Tools
 from dotenv import load_dotenv
 import os
-import requests
 import numpy as np
+import math
 
-# search up to 7 days backward for stock price data
-def get_price(date, daily_stock_prices):
-    look_date = datetime.strptime(date, "%Y-%m-%d")
-    current_price = np.nan
-    for _ in range(7): 
-        ds = look_date.strftime("%Y-%m-%d")
-        if ds in daily_stock_prices:
-            current_price = float(daily_stock_prices[ds]["4. close"])
-            break
-        look_date -= timedelta(days=1)
-    return current_price
+load_dotenv() 
+api_key = os.getenv('ALPHA_KEY')
 
-def main():
+p = {
+    "starting_capital": 1000000000,
+    "capital_invested_per_year": 0.2,
+    "max_portfolio": 20,
+    "stock_purchases_per_quarter": 25,
+    "stock_shorts_per_quarter": 0,
+    "starting_quarter": "2014-12-31",
+    "roic_lower_threshold": 0.25
+}
 
-    load_dotenv() 
-    api_key = os.getenv('ALPHA_KEY')
+capital = p["starting_capital"]
+holdings = [] # list of dicts: name, date purchased, amount of stock, shorting T/F
+results = pd.DataFrame(columns=["portfolio value"])
 
-    stock_list = pd.read_csv("stock_tickers.csv")
-    result = pd.DataFrame()
+roic_ey_df = pd.read_csv("roic_ey.csv", index_col="fiscalDateEnding")
+prices_df = pd.read_csv("price.csv", index_col="fiscalDateEnding")
 
-    for i, ticker in enumerate(stock_list["symbol"]):
-        income_statements = requests.get(f"https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol={ticker}&apikey={api_key}").json()["quarterlyReports"]
-        balance_statements = requests.get(f"https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol={ticker}&apikey={api_key}").json()["quarterlyReports"]
-        daily_stock_prices = requests.get(f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full&apikey={api_key}").json()["Time Series (Daily)"]
+for quarter in range(roic_ey_df.index.get_loc(p["starting_quarter"]), -1, -1):
 
-        # print(daily_stock_prices)
-        # quit()
+    quarter_string = roic_ey_df.index[quarter]
+    quarterly_capital = 0
 
-        is_df = pd.DataFrame.from_records(income_statements,index="fiscalDateEnding", columns=["fiscalDateEnding", "netIncome"]).dropna()
-        bs_df = pd.DataFrame.from_records(balance_statements,index="fiscalDateEnding", columns=["fiscalDateEnding", "totalAssets", "commonStockSharesOutstanding"]).dropna()
-        price_df = pd.DataFrame.from_records([{"fiscalDateEnding": date, "price": get_price(date, daily_stock_prices)} for date in is_df.index ], index="fiscalDateEnding").dropna()
+    roic_cols = [col for col in roic_ey_df.columns if "roic" in col]
 
-        company_info = pd.DataFrame(index = is_df.index)
-        company_info["netIncome"] = is_df["netIncome"]
-        company_info["totalAssets"] = bs_df["totalAssets"]
-        company_info["commonStockSharesOutstanding"] = bs_df["commonStockSharesOutstanding"]
-        company_info["price"] = price_df["price"]
+    roic = roic_ey_df.iloc[quarter][roic_cols].dropna().sort_values(ascending=False)
+    prospects_names = [name.replace("_roic", "") for name in roic[roic > p["roic_lower_threshold"]].index]
 
-        company_info.dropna(inplace=True)
+    # for prospect in prospects_names:
+    #     print(prospect)
+    #     print(prices_df.loc[quarter_string][f"{prospect}_price"])
 
-        print(company_info)
+    ey_cols = [col for col in roic_ey_df.columns if "ey" in col and col.replace("_ey", "") in prospects_names]
+    ey = roic_ey_df.iloc[quarter][ey_cols].dropna().sort_values(ascending=False)
 
-        # ROA = Net income / Total assets
-        result[f"{ticker}_roa"] = company_info["netIncome"].astype(float) / company_info["totalAssets"].astype(float)
+    picks = ey.head(p["stock_purchases_per_quarter"])
 
-        # P/E Ratio = Current price / EPS for EPS = Net income / Shares Outstanding
-        result[f"{ticker}_pe"] = price_df["price"] / (company_info["netIncome"].astype(float) / company_info["commonStockSharesOutstanding"].astype(float))
-    
-    result.to_csv("roa_pe.csv")
+    if capital > 0:
+        quarterly_capital = p["starting_capital"] * p["capital_invested_per_year"] / 4
+        capital -= quarterly_capital
 
-if __name__ == "__main__":
-    main()
+    for h in holdings:
+        if dt.datetime.strptime(quarter_string, "%Y-%m-%d") - dt.datetime.strptime(h["date"], "%Y-%m-%d") > dt.timedelta(days=360):
+            quarterly_capital += h["amount"] * prices_df.loc[quarter_string][f"{h['ticker']}_price"]
+            holdings.remove(h)
+
+    for stock in [p.replace("_ey", "") for p in picks.index]:
+        holdings.append({
+            "ticker": stock,
+            "date": quarter_string,
+            "amount": (quarterly_capital / p["stock_purchases_per_quarter"]) / prices_df.loc[quarter_string][f"{stock}_price"]
+        })
+
+    # print([[h["ticker"], h["amount"] * prices_df.loc[quarter_string][f"{h['ticker']}_price"] / 10000000.0, prices_df.loc[quarter_string][f"{h['ticker']}_price"]] for h in holdings], end="\n\n")
+
+    value = sum([h["amount"] * prices_df.loc[quarter_string][f"{h['ticker']}_price"] for h in holdings]) + capital
+    results.loc[dt.datetime.strptime(quarter_string, "%Y-%m-%d")] = value
+    print(value)
+
+quit()
+
+spy_daily_stock_prices = requests.get(f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=spy&outputsize=full&apikey={api_key}").json()["Time Series (Daily)"]
+spy_prices = pd.DataFrame().from_records([{"date": d, "price": Tools.get_price(dt.datetime.strftime(d, "%Y-%m-%d"), spy_daily_stock_prices)} for d in results.index], index="date") / Tools.get_price(dt.datetime.strftime(results.index[0], "%Y-%m-%d"), spy_daily_stock_prices)
+results = results / results.iloc[0]
+
+print(spy_prices)
+print(results)
+
+figure = plt.figure()
+p = figure.add_subplot()
+
+p.plot(results, label="Test")
+p.plot(spy_prices, label="Spy")
+p.legend()
+plt.show()
