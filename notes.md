@@ -9,7 +9,7 @@ Automatically investing in businesses with Greenblatt's magic formula:
 - Short worst companies?
 - Quantitative approach to long-term value investing 
 
-### Summary of instructions below:
+### Summary of Greenblatt's instructions below:
 Finding stocks:
 - Get list of stocks: no utilities, financial stocks (mutual funds, banks, and insurance companies), no foreign companies ("name contains ADR")
     - NOTE: why no foreign companies?
@@ -26,6 +26,24 @@ Investing:
     - Winners sold few days after, losers sold few days before for tax reasons
     - After sales, purchase equal number of new highest stocks using any float
 
+### Updates For Modern Era (From 'Modernizing Greenblatt DeepSeek Chat')
+Issue: results after 2022ish seem to consistently underperform spy
+Potential Solutions:
+1. Find out which sectors are being chosen, restrict sectors to same proportions +-5% as in spy
+    - Optional: sector neutrality, choose top x companies from each sector
+2. Calculate rolling 1-year Spearman rank correlation for each metric (ROIC, EY) vs. forward returns, see if correlation dropped
+3. Rank stocks based on 60% EY ROIC 50/50, and 40% 6 month momentum (minus most recent month)
+    - Can change proportion based on regime changes (SPY 200 day moving average): 
+        If SPX > 200DMA: 60% MF / 40% momentum.
+        If SPX < 200DMA: 70% MF / 30% momentum (tilt defensive)
+4. Exclude companies with Debt/EBITDA > 3x, or sector standard +1std and Interest Coverage Ratio < 4x
+5. Replace EBIT/EV with Free Cash Flow Yield (FCF/EV) for Tech/biotech firms and Companies with capex > 50% of EBITDA.
+6. EY = Adjusted EY = 0.7*(EBIT/EV) + 0.3*(1/forward PEG) for PEG = (forward P/E ÷ 3-year EPS growth)
+7. Size positions based on inverse volatility (portfolio vol / stock vol) for 90 day vol
+8. Stop trading and switch to cash if strategy underperforms Spy by >10% in rolling 3 month window, re-enter when MF+momentum composite rank Z-score > 0.5
+9. Optimize parameters separately for each regime (year), then find a middle ground
+10. Potentially add 10% allocation to equal-weight MAG7 (AAPL, MSFT, etc.).
+11. Rebalance quarterly, 10% trailing stop loss on individual positions
 
 
 ### GreenBlatt's Instructions from book:
@@ -43,4 +61,5 @@ Investing:
 
 
 Note: worst case scenario: https://www.alphavantage.co/documentation/#etf-profile
+- Also: https://www.alphavantage.co/documentation/#insider-transactions
 
