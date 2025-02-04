@@ -13,7 +13,7 @@ api_key = os.getenv('ALPHA_KEY')
 
 p = {
     "starting_capital": 1000000000,
-    "capital_invested_per_year": 1,
+    "percent_sold_per_quarter": 1,
     "stock_purchases_per_quarter": 20, # 20 works well
     # "starting_quarters": ["2014-03-31", "2018-03-31", "2020-03-31", "2023-03-31"], # 2014-03-31, 2018-03-31 good. 2019-03-31 bad but 2019-06-30 good?
     "starting_quarters": ["2020-03-31"], # 202[0, 1, 2, 3]-03-31 only 2 did well
@@ -38,7 +38,6 @@ for starting_quarter in p["starting_quarters"]:
     for quarter in range(roic_ey_df.index.get_loc(starting_quarter), -1, -1):
 
         quarter_string = roic_ey_df.index[quarter]
-        quarterly_capital = 0
 
         roic_cols = [col for col in roic_ey_df.loc[quarter_string].index if "roic" in col]
         ey_cols = [col for col in roic_ey_df.loc[quarter_string].index if "ey" in col]
@@ -52,19 +51,34 @@ for starting_quarter in p["starting_quarters"]:
         quarter_df.sort_values(by="score", ascending=False, inplace=True)
         picks = quarter_df.head(p["stock_purchases_per_quarter"])
 
-        if capital > 0:
-            quarterly_capital = p["starting_capital"] * p["capital_invested_per_year"] / 4
-            capital -= quarterly_capital
+        # Calculate value of sellings 
+        for h in list(holdings):
+            purchase_date = dt.datetime.strptime(h["date"], "%Y-%m-%d")
+            current_date = dt.datetime.strptime(quarter_string, "%Y-%m-%d")
+            stock = h["ticker"]
+            price = prices_df.loc[quarter_string, f"{stock}_price"]
+            # Check if price exists and is not NaN
+            if f"{stock}_price" not in prices_df.columns or pd.isna(prices_df.loc[quarter_string, f"{stock}_price"]):
+                try:
+                    price = Tools.get_price_request(quarter_string, stock)
+                    prices_df.loc[quarter_string, f"{stock}_price"] = price
+                except:
+                    print(f"Warning: Missing price for {stock} in {quarter_string}. Holding not closed.")
+                    continue
+            capital += h["amount"] * price
+            holdings.remove(h)
 
         # Purchases
         for stock in picks.index:
             price = prices_df.loc[quarter_string][f"{stock}_price"]
+            amount = (capital / p["stock_purchases_per_quarter"]) / price
             holdings.append({
                 "ticker": stock,
                 "date": quarter_string,
                 "type": "long",
-                "amount": (quarterly_capital / p["stock_purchases_per_quarter"]) / price
+                "amount": amount
             })
+            capital -= (capital / p["stock_purchases_per_quarter"])
         
         # Calculate new total value
         current_value = 0
