@@ -17,6 +17,7 @@ def main():
     all_dates = pd.DataFrame.from_records(requests.get(f"https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=ibm&apikey={api_key}").json()["quarterlyReports"])["fiscalDateEnding"]
     result = pd.DataFrame(index=all_dates)
     prices = pd.DataFrame(index=all_dates)
+    market_caps = pd.DataFrame(index=all_dates)
 
     for i, ticker in enumerate(stock_list["symbol"]):
     # for i, ticker in enumerate(["ibm"]):
@@ -47,17 +48,19 @@ def main():
 
             company_info.dropna(inplace=True)
 
-            prices[f"{ticker}_price"] = price_df["price"].astype(float)
+            # prices[f"{ticker}_price"] = price_df["price"].astype(float)
+            market_caps[f"{ticker}_market_cap"] = company_info["market_value"].astype(float)
 
-            result[f"{ticker}_roic"] = company_info["ebit"].astype(float) / (company_info["net_working_capital"].astype(float) + company_info["net_fixed_assets"].astype(float))
-            result[f"{ticker}_ey"] = company_info["ebit"].astype(float) / (company_info["market_value"].astype(float) + company_info["debt"].astype(float) - company_info["cash"].astype(float))
+            # result[f"{ticker}_roic"] = company_info["ebit"].astype(float) / (company_info["net_working_capital"].astype(float) + company_info["net_fixed_assets"].astype(float))
+            # result[f"{ticker}_ey"] = company_info["ebit"].astype(float) / (company_info["market_value"].astype(float) + company_info["debt"].astype(float) - company_info["cash"].astype(float))
         except KeyboardInterrupt:
             quit()
         except:
             continue
     
-    result.to_csv("roic_ey.csv")
-    prices.to_csv("price.csv")
+    # result.to_csv("roic_ey.csv")
+    # prices.to_csv("price.csv")
+    market_caps.to_csv("market_caps.csv")
 
 if __name__ == "__main__":
     main()
