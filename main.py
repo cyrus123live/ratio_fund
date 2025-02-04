@@ -15,10 +15,11 @@ p = {
     "starting_capital": 1000000000,
     "percent_sold_per_quarter": 1,
     "stock_purchases_per_quarter": 20, # 20 works well
-    # "starting_quarters": ["2014-03-31", "2018-03-31", "2020-03-31", "2023-03-31"], # 2014-03-31, 2018-03-31 good. 2019-03-31 bad but 2019-06-30 good?
-    "starting_quarters": ["2020-03-31"], # 202[0, 1, 2, 3]-03-31 only 2 did well
+    "starting_quarters": ["2014-03-31", "2018-03-31", "2020-03-31", "2023-03-31"], # 2014-03-31, 2018-03-31 good. 2019-03-31 bad but 2019-06-30 good?
+    # "starting_quarters": ["2020-03-31"], # 202[0, 1, 2, 3]-03-31 only 2 did well
     "roic_lower_threshold": 0.25,
-    "ey_lower_threshold": 0
+    "ey_lower_threshold": 0,
+    "market_cap_lower_threshold": 500000000
 }
 
 results_list = []
@@ -31,22 +32,24 @@ for starting_quarter in p["starting_quarters"]:
 
     roic_ey_df = pd.read_csv("roic_ey.csv", index_col="fiscalDateEnding")
     prices_df = pd.read_csv("prices_edited.csv", index_col="fiscalDateEnding")
-
-    # print(prices_df["CTBB_price"])
-    # print(roic_ey_df["CTBB_ey"])
+    market_caps = pd.read_csv("market_caps.csv", index_col="fiscalDateEnding")
 
     for quarter in range(roic_ey_df.index.get_loc(starting_quarter), -1, -1):
-
         quarter_string = roic_ey_df.index[quarter]
 
+        # Find stats for this quarter's contenders in new df
         roic_cols = [col for col in roic_ey_df.loc[quarter_string].index if "roic" in col]
         ey_cols = [col for col in roic_ey_df.loc[quarter_string].index if "ey" in col]
-
-        quarter_df = pd.DataFrame(columns=["roic", "ey", "score"])
+        quarter_df = pd.DataFrame(columns=["roic", "ey", "market_cap", "score"])
         for ticker in [r.replace("_roic", "") for r in roic_cols]:
-            quarter_df.loc[ticker] = {"roic": roic_ey_df.loc[quarter_string][f"{ticker}_roic"], "ey": roic_ey_df.loc[quarter_string][f"{ticker}_ey"]}
+            quarter_df.loc[ticker] = {"roic": roic_ey_df.loc[quarter_string][f"{ticker}_roic"], "ey": roic_ey_df.loc[quarter_string][f"{ticker}_ey"], "market_cap": market_caps.loc[quarter_string][f"{ticker}_market_cap"]}
+        
+        # Apply thresholds
         quarter_df = quarter_df[quarter_df["ey"] > p["ey_lower_threshold"]]
         quarter_df = quarter_df[quarter_df["roic"] > p["roic_lower_threshold"]]
+        quarter_df = quarter_df[quarter_df["market_cap"] > p["market_cap_lower_threshold"]]
+
+        # Calculate and sort by score to find picks
         quarter_df["score"] = 0.5 * quarter_df.roic.rank(pct = True) + 0.5 * quarter_df.ey.rank(pct = True)
         quarter_df.sort_values(by="score", ascending=False, inplace=True)
         picks = quarter_df.head(p["stock_purchases_per_quarter"])
@@ -68,7 +71,7 @@ for starting_quarter in p["starting_quarters"]:
             capital += h["amount"] * price
             holdings.remove(h)
 
-        # Purchases
+        # Make purchases
         for stock in picks.index:
             price = prices_df.loc[quarter_string][f"{stock}_price"]
             amount = (capital / p["stock_purchases_per_quarter"]) / price
