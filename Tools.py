@@ -47,3 +47,15 @@ def get_price_df():
             print(f"Skipping {ticker} due to error: {str(e)}")
             continue
     prices.to_csv("price_new.csv")
+
+def get_latest_stat(ticker, quarter_string, stat_df):
+    date = datetime.strptime(quarter_string, "%Y-%m-%d")
+    stat = np.nan
+    for i in range(50):
+        try:
+            stat = stat_df.loc[datetime.strftime(date, "%Y-%m-%d"), ticker]
+        except:
+            date = date - timedelta(days=1)
+            continue
+
+    return stat
