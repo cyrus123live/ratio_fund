@@ -5,6 +5,28 @@ import os
 import requests
 import numpy as np
 from dotenv import load_dotenv
+import math
+
+def get_cumulative_and_annual_returns(returns):
+
+    num_years = (returns.index[-1].year - returns.index[0].year + ((returns.index[-1].month + 1) / 12) - (returns.index[0].month / 12))
+
+    cumulative_return = returns.iloc[-1] / returns.iloc[0] - 1
+    annual_return = math.pow(1 + cumulative_return.iloc[0], (1/num_years)) - 1
+
+    return cumulative_return.values[0], annual_return
+
+def get_sharpe_and_vol(returns, periods_per_year):
+    mean_return = returns.pct_change().mean()
+    std_return = returns.pct_change().std()
+    sharpe = (mean_return / std_return) * np.sqrt(periods_per_year)
+    vol = std_return * np.sqrt(periods_per_year)
+    return sharpe.values[0], vol.values[0]
+
+def get_max_drawdown(returns):
+    rolling_max = returns.cummax()
+    drawdown = (returns - rolling_max) / rolling_max
+    return drawdown.min().values[0]
 
 # search up to 7 days backward for stock price data
 def get_price(date, daily_stock_prices):
